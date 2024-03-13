@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form action="">
+    <div>
+        {{ form.title.as_field_group }}
+        <div class="row">
+            <div class="col">
+                {{ form.published.as_field_group }}
+            </div>
+            <div class="col">{{ form.active.as_field_group }}</div>
+        </div>
+        <input type="submit">
+    </div>
+</form>
+</body>
+</html>
