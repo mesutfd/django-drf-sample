@@ -1,20 +1,44 @@
 from django.db.models import Count
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
+from rest_framework.filters import SearchFilter, OrderingFilter
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from .models import Product, Collection, OrderItem, Review
-from .serializers import ProductSerializer, CollectionSerializer, ReviewSerializer
+from .filters import ProductFilter
+from .models import Product, Collection, OrderItem, Review, Cart
+from .pagination import DefaultPagination
+from .serializers import ProductSerializer, CollectionSerializer, ReviewSerializer, CartSerializer
 
 
 class ReviewViewSet(ModelViewSet):
-    queryset = Review.objects.all()
     serializer_class = ReviewSerializer
+
+    def get_serializer_context(self):
+        current_user = self.request.user.id
+        return {
+            'product_id': self.kwargs['product_pk'],
+            'current_user': current_user
+        }
+
+    def get_queryset(self):
+        return Review.objects.filter(product_id=self.kwargs['product_pk']).prefetch_related('product')
 
 
 class ProductViewSet(ModelViewSet):
-    serializer_class = ProductSerializer
     queryset = Product.objects.all()
+    # filtering by third-party application: django-filter
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_class = ProductFilter
+    search_fields = ['title', 'description']
+    ordering_fields = ['unit_price', 'last_update']
+
+    # filter_fields = ['collection_id']
+
+    # pagination_class = PageNumberPagination
+    pagination_class = DefaultPagination
+
+    serializer_class = ProductSerializer
     lookup_field = 'pk'  # name of the url parameter
     lookup_url_kwarg = 'pk'
 
@@ -26,6 +50,15 @@ class ProductViewSet(ModelViewSet):
             return Response({'error': 'Product can not be deleted because it is associated with an order item'},
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
         return super().destroy(request, *args, **kwargs)
+
+    # manual filtering
+    # def get_queryset(self):
+    #
+    #     collection_id = self.request.query_params.get('collection_id')
+    #     if collection_id:
+    #         return Product.objects.filter(collection_id=collection_id)
+    #
+    #     return Product.objects.all()
 
 
 class CollectionViewSet(ModelViewSet):
@@ -40,6 +73,16 @@ class CollectionViewSet(ModelViewSet):
             return Response({'error': 'Collection can not be deleted because it is associated one or more products'},
                             status=status.HTTP_405_METHOD_NOT_ALLOWED)
         return super().destroy(request, *args, **kwargs)
+
+
+class CartViewSet(ModelViewSet):
+    queryset = Cart.objects.all()
+    serializer_class = CartSerializer
+
+    def get_serializer_context(self):
+        return {
+            'request': self.request
+        }
 
 # class ProductList(ListCreateAPIView):
 #     pass
