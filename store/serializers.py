@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from store.models import Product, Collection, Review, Cart
+from store.models import Product, Collection, Review, Cart, CartItem
 
 
 class CollectionSerializer(serializers.ModelSerializer):
@@ -12,7 +12,8 @@ class CollectionSerializer(serializers.ModelSerializer):
         model = Collection
         fields = ['id', 'title', 'products_count']
 
-    def perform_create(self, validated_data):
+    @staticmethod
+    def perform_create(validated_data):
         collection_data = validated_data.pop('collection')
         product = Product.objects.create(**validated_data)
         product.collection = collection_data
@@ -28,12 +29,6 @@ class CollectionSerializer(serializers.ModelSerializer):
     #     return collection.product_set.count()
 
 
-class CartSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Cart
-        fields = ['product', 'quantity']
-
-
 class ProductSerializer(serializers.ModelSerializer):
     price_with_tax = serializers.SerializerMethodField(method_name='calculate_tax')
     collection = serializers.PrimaryKeyRelatedField(queryset=Collection.objects.all())
@@ -42,6 +37,39 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         # Be aware, Mosh said never use __all__ which is for lazy developers
         fields = ['id', 'title', 'description', 'slug', 'inventory', 'unit_price', 'price_with_tax', 'collection']
+
+
+class SimpleProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'title', 'unit_price']
+
+
+class CartItemSerializer(serializers.ModelSerializer):
+    product = SimpleProductSerializer()
+    total_price = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_total_price(cart_item: CartItem):
+        return cart_item.quantity * cart_item.product.unit_price
+
+    class Meta:
+        model = CartItem
+        fields = ['id', 'product', 'quantity', 'total_price']
+
+
+class CartSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
+    items = CartItemSerializer(many=True)
+    total_price = serializers.SerializerMethodField()
+
+    @staticmethod
+    def get_total_price(cart: Cart):
+        return sum([item.quantity * item.product.unit_price for item in cart.items.all()])
+
+    class Meta:
+        model = Cart
+        fields = ['id', 'items', 'total_price']
 
     @staticmethod
     def calculate_tax(product: Product):

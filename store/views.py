@@ -2,8 +2,9 @@ from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
 from .filters import ProductFilter
 from .models import Product, Collection, OrderItem, Review, Cart
@@ -75,9 +76,10 @@ class CollectionViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-class CartViewSet(ModelViewSet):
-    queryset = Cart.objects.all()
+class CartViewSet(CreateModelMixin, GenericViewSet, RetrieveModelMixin):
+    queryset = Cart.objects.prefetch_related('items__product').all()
     serializer_class = CartSerializer
+    pagination_class = DefaultPagination
 
     def get_serializer_context(self):
         return {
