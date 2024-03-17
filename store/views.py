@@ -16,10 +16,8 @@ class ReviewViewSet(ModelViewSet):
     serializer_class = ReviewSerializer
 
     def get_serializer_context(self):
-        current_user = self.request.user.id
         return {
-            'product_id': self.kwargs['product_pk'],
-            'current_user': current_user
+            'product_id': self.kwargs.get('product_pk'),
         }
 
     def get_queryset(self):

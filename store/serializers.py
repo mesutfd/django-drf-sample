@@ -33,6 +33,10 @@ class ProductSerializer(serializers.ModelSerializer):
     price_with_tax = serializers.SerializerMethodField(method_name='calculate_tax')
     collection = serializers.PrimaryKeyRelatedField(queryset=Collection.objects.all())
 
+    @staticmethod
+    def calculate_tax(product: Product):
+        return round(product.unit_price * Decimal(1.1), 2)
+
     class Meta:
         model = Product
         # Be aware, Mosh said never use __all__ which is for lazy developers
@@ -71,9 +75,6 @@ class CartSerializer(serializers.ModelSerializer):
         model = Cart
         fields = ['id', 'items', 'total_price']
 
-    @staticmethod
-    def calculate_tax(product: Product):
-        return round(product.unit_price * Decimal(1.1), 2)
     # id = serializers.IntegerField()
     # title = serializers.CharField(max_length=255)
     # price = serializers.DecimalField(max_digits=6, decimal_places=2, source='unit_price')
